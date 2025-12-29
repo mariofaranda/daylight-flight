@@ -102,13 +102,13 @@ function App() {
     scene.add(sphere)
 
     // Add a marker at user location
-    const dotGeometry = new THREE.SphereGeometry(0.02, 8, 8)
+    const dotGeometry = new THREE.SphereGeometry(0.01, 32, 32)
     const dotMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x27A3F5,
-      emissive: 0x27A3F5,
+      color: 0xffffff,
+      emissive: 0xffffff,
       emissiveIntensity: 1,
-      roughness: 0.5,
-      metalness: 0.5
+      roughness: 0.8,
+      metalness: 0.1
     })
     const dot = new THREE.Mesh(dotGeometry, dotMaterial)
 
@@ -278,79 +278,134 @@ function App() {
   }, [])
 
     // Effect to draw flight path when flightPath state changes
-  useEffect(() => {
-    if (!flightPath || !sceneRef.current) return
+    useEffect(() => {
+      if (!flightPath || !sceneRef.current) return
 
-    // Remove previous flight path if exists
-    if (flightLineRef.current) {
-      sceneRef.current.remove(flightLineRef.current)
-      flightLineRef.current.geometry.dispose()
-      flightLineRef.current.material.dispose()
-    }
-
-    const { departure, arrival } = flightPath
-
-    // Helper function to convert lat/lon to 3D vector
-    const latLonToVector3 = (lat, lon, radius) => {
-      const phi = (90 - lat) * (Math.PI / 180)
-      const theta = (lon + 180) * (Math.PI / 180)
-      
-      return new THREE.Vector3(
-        -radius * Math.sin(phi) * Math.cos(theta),
-        radius * Math.cos(phi),
-        radius * Math.sin(phi) * Math.sin(theta)
-      )
-    }
-
-    // Calculate great circle path using proper spherical interpolation
-    const points = []
-    const numPoints = 100
-    const radius = 2.01
-
-    // Get start and end points as 3D vectors
-    const start = latLonToVector3(departure.lat, departure.lon, 1) // Unit sphere
-    const end = latLonToVector3(arrival.lat, arrival.lon, 1)
-
-    // Calculate angle between vectors
-    const angle = start.angleTo(end)
-
-    for (let i = 0; i <= numPoints; i++) {
-      const fraction = i / numPoints
-      
-      // Spherical linear interpolation (Slerp)
-      const point = new THREE.Vector3()
-      
-      if (angle === 0) {
-        // Same point
-        point.copy(start)
-      } else {
-        const sinAngle = Math.sin(angle)
-        const a = Math.sin((1 - fraction) * angle) / sinAngle
-        const b = Math.sin(fraction * angle) / sinAngle
-        
-        point.x = a * start.x + b * end.x
-        point.y = a * start.y + b * end.y
-        point.z = a * start.z + b * end.z
+      // Remove previous flight path if exists
+      if (flightLineRef.current) {
+        sceneRef.current.remove(flightLineRef.current)
+        flightLineRef.current.geometry.dispose()
+        flightLineRef.current.material.dispose()
       }
+
+      const { departure, arrival } = flightPath
+
+      // Create a group to hold everything
+      const flightGroup = new THREE.Group()
+
+      // Helper function to convert lat/lon to 3D vector
+      const latLonToVector3 = (lat, lon, radius) => {
+        const phi = (90 - lat) * (Math.PI / 180)
+        const theta = (lon + 180) * (Math.PI / 180)
+        
+        return new THREE.Vector3(
+          -radius * Math.sin(phi) * Math.cos(theta),
+          radius * Math.cos(phi),
+          radius * Math.sin(phi) * Math.sin(theta)
+        )
+      }
+
+      // Calculate great circle path using proper spherical interpolation
+      const points = []
+      const numPoints = 100
+      const radius = 2.01
+
+      // Get start and end points as 3D vectors
+      const start = latLonToVector3(departure.lat, departure.lon, 1)
+      const end = latLonToVector3(arrival.lat, arrival.lon, 1)
+
+      // Calculate angle between vectors
+      const angle = start.angleTo(end)
+
+      for (let i = 0; i <= numPoints; i++) {
+        const fraction = i / numPoints
+        
+        const point = new THREE.Vector3()
+        
+        if (angle === 0) {
+          point.copy(start)
+        } else {
+          const sinAngle = Math.sin(angle)
+          const a = Math.sin((1 - fraction) * angle) / sinAngle
+          const b = Math.sin(fraction * angle) / sinAngle
+          
+          point.x = a * start.x + b * end.x
+          point.y = a * start.y + b * end.y
+          point.z = a * start.z + b * end.z
+        }
+        
+        point.normalize().multiplyScalar(radius)
+        points.push(point)
+      }
+
+      // Create the flight path tube
+      const tubeGeometry = new THREE.TubeGeometry(
+        new THREE.CatmullRomCurve3(points),
+        points.length,
+        0.005,
+        8,
+        false
+      )
+      const tubeMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0xffffff
+      })
+      const tube = new THREE.Mesh(tubeGeometry, tubeMaterial)
+      flightGroup.add(tube)
+
+      // Add airport markers (dots)
+      const dotGeometry = new THREE.SphereGeometry(0.015, 16, 16)
+      const dotMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff })
       
-      // Scale to Earth radius + altitude
-      point.normalize().multiplyScalar(radius)
-      points.push(point)
-    }
+      const departureDot = new THREE.Mesh(dotGeometry, dotMaterial)
+      departureDot.position.copy(latLonToVector3(departure.lat, departure.lon, 2.01))
+      flightGroup.add(departureDot)
+      
+      const arrivalDot = new THREE.Mesh(dotGeometry, dotMaterial)
+      arrivalDot.position.copy(latLonToVector3(arrival.lat, arrival.lon, 2.01))
+      flightGroup.add(arrivalDot)
 
-    // Create the line
-    const lineGeometry = new THREE.BufferGeometry().setFromPoints(points)
-    const lineMaterial = new THREE.LineBasicMaterial({ 
-      color: 0xff0000,
-      linewidth: 2
-    })
-    const line = new THREE.Line(lineGeometry, lineMaterial)
-    
-    sceneRef.current.add(line)
-    flightLineRef.current = line
+      // Add text labels using canvas textures
+      const createTextLabel = (text) => {
+        const canvas = document.createElement('canvas')
+        const context = canvas.getContext('2d')
+        canvas.width = 256
+        canvas.height = 128
+        
+        context.fillStyle = 'rgba(255, 255, 255, 0)'
+        context.fillRect(0, 0, canvas.width, canvas.height)
+        
+        context.fillStyle = '#ffffff'
+        context.font = '48px system-ui, -apple-system, sans-serif'
+        context.textAlign = 'center'
+        context.textBaseline = 'middle'
+        context.fillText(text, canvas.width / 2, canvas.height / 2)
+        
+        const texture = new THREE.CanvasTexture(canvas)
+        const material = new THREE.SpriteMaterial({ 
+          map: texture,
+          sizeAttenuation: false
+        })
+        const sprite = new THREE.Sprite(material)
+        sprite.scale.set(0.1, 0.05, 1)
+        
+        return sprite
+      }
 
-    console.log('Great circle path drawn with', points.length, 'points')
-  }, [flightPath])
+      const departureLabel = createTextLabel(departureCode)
+      const departureLabelPos = latLonToVector3(departure.lat, departure.lon, 2.05)
+      departureLabel.position.copy(departureLabelPos)
+      flightGroup.add(departureLabel)
+
+      const arrivalLabel = createTextLabel(arrivalCode)
+      const arrivalLabelPos = latLonToVector3(arrival.lat, arrival.lon, 2.05)
+      arrivalLabel.position.copy(arrivalLabelPos)
+      flightGroup.add(arrivalLabel)
+
+      sceneRef.current.add(flightGroup)
+      flightLineRef.current = flightGroup
+
+      console.log('Flight path with markers drawn')
+    }, [flightPath, departureCode, arrivalCode])
 
   const calculateFlight = () => {
     if (!airports) {
@@ -392,7 +447,6 @@ function App() {
           <label>Departure</label>
           <input 
             type="text" 
-            placeholder="JFK"
             maxLength="3"
             value={departureCode}
             onChange={(e) => setDepartureCode(e.target.value.toUpperCase())}
@@ -402,7 +456,6 @@ function App() {
           <label>Arrival</label>
           <input 
             type="text" 
-            placeholder="NRT"
             maxLength="3"
             value={arrivalCode}
             onChange={(e) => setArrivalCode(e.target.value.toUpperCase())}

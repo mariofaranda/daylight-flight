@@ -284,8 +284,17 @@ function App() {
       // Remove previous flight path if exists
       if (flightLineRef.current) {
         sceneRef.current.remove(flightLineRef.current)
-        flightLineRef.current.geometry.dispose()
-        flightLineRef.current.material.dispose()
+        
+        // Dispose all geometries and materials in the group
+        flightLineRef.current.traverse((child) => {
+          if (child.geometry) child.geometry.dispose()
+          if (child.material) {
+            if (child.material.map) child.material.map.dispose()
+            child.material.dispose()
+          }
+        })
+        
+        flightLineRef.current = null
       }
 
       const { departure, arrival } = flightPath
@@ -405,7 +414,7 @@ function App() {
       flightLineRef.current = flightGroup
 
       console.log('Flight path with markers drawn')
-    }, [flightPath, departureCode, arrivalCode])
+    }, [flightPath])
 
   const calculateFlight = () => {
     if (!airports) {

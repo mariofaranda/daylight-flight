@@ -8,13 +8,51 @@ function App() {
   const canvasRef = useRef(null)
   const [currentTime, setCurrentTime] = useState(new Date())
   const [simulatedTime, setSimulatedTime] = useState(new Date())
+  const [departureCode, setDepartureCode] = useState('')
+  const [arrivalCode, setArrivalCode] = useState('')
+  const [airports, setAirports] = useState(null)
+  const [flightPath, setFlightPath] = useState(null)
+  
+  // Store scene reference to add/remove flight path
+  const sceneRef = useRef(null)
+  const flightLineRef = useRef(null)
 
   useEffect(() => {
     if (!canvasRef.current) return
 
+    // Load airport data from OpenFlights
+    fetch('https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat')
+    .then(res => res.text())
+    .then(data => {
+      // Parse CSV format
+      const lines = data.split('\n')
+      const airportMap = {}
+      
+      lines.forEach(line => {
+        const parts = line.split(',').map(s => s.replace(/"/g, ''))
+        if (parts.length >= 8) {
+          const iata = parts[4]  // IATA code
+          const name = parts[1]
+          const city = parts[2]
+          const lat = parseFloat(parts[6])
+          const lon = parseFloat(parts[7])
+          
+          // Only include airports with valid IATA codes
+          if (iata && iata !== '\\N' && iata.length === 3) {
+            airportMap[iata] = { name, city, lat, lon }
+          }
+        }
+      })
+      
+      setAirports(airportMap)
+      console.log('Loaded airports:', Object.keys(airportMap).length)
+    })
+    .catch(err => console.error('Error loading airports:', err))
+
     // 1. Create the scene
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(0xe8e6e3) // warm light gray
+    sceneRef.current = scene  // Store scene reference
 
     // 2. Create the camera
     const camera = new THREE.PerspectiveCamera(
@@ -168,8 +206,8 @@ function App() {
       // Calculate elapsed time since start
       const elapsed = Date.now() - startTime
       
-      // Accelerate time: multiply elapsed by 600 (600x speed for testing)
-      const acceleratedTime = startTime + (elapsed * 1)  // Real-time (1x speed)
+      // Real-time (1x speed)
+      const acceleratedTime = startTime + (elapsed * 1)
       const currentTime = new Date(acceleratedTime)
       
       // Get subsolar point
@@ -208,7 +246,6 @@ function App() {
       const intensity = 0.5 + Math.sin(time) * 0.5
       dotMaterial.emissiveIntensity = intensity
 
-      // Update time display
       // Update time displays
       setCurrentTime(new Date())  // Real time
       const elapsed = Date.now() - startTime
@@ -240,12 +277,145 @@ function App() {
     }
   }, [])
 
+    // Effect to draw flight path when flightPath state changes
+  useEffect(() => {
+    if (!flightPath || !sceneRef.current) return
+
+    // Remove previous flight path if exists
+    if (flightLineRef.current) {
+      sceneRef.current.remove(flightLineRef.current)
+      flightLineRef.current.geometry.dispose()
+      flightLineRef.current.material.dispose()
+    }
+
+    const { departure, arrival } = flightPath
+
+    // Helper function to convert lat/lon to 3D vector
+    const latLonToVector3 = (lat, lon, radius) => {
+      const phi = (90 - lat) * (Math.PI / 180)
+      const theta = (lon + 180) * (Math.PI / 180)
+      
+      return new THREE.Vector3(
+        -radius * Math.sin(phi) * Math.cos(theta),
+        radius * Math.cos(phi),
+        radius * Math.sin(phi) * Math.sin(theta)
+      )
+    }
+
+    // Calculate great circle path using proper spherical interpolation
+    const points = []
+    const numPoints = 100
+    const radius = 2.01
+
+    // Get start and end points as 3D vectors
+    const start = latLonToVector3(departure.lat, departure.lon, 1) // Unit sphere
+    const end = latLonToVector3(arrival.lat, arrival.lon, 1)
+
+    // Calculate angle between vectors
+    const angle = start.angleTo(end)
+
+    for (let i = 0; i <= numPoints; i++) {
+      const fraction = i / numPoints
+      
+      // Spherical linear interpolation (Slerp)
+      const point = new THREE.Vector3()
+      
+      if (angle === 0) {
+        // Same point
+        point.copy(start)
+      } else {
+        const sinAngle = Math.sin(angle)
+        const a = Math.sin((1 - fraction) * angle) / sinAngle
+        const b = Math.sin(fraction * angle) / sinAngle
+        
+        point.x = a * start.x + b * end.x
+        point.y = a * start.y + b * end.y
+        point.z = a * start.z + b * end.z
+      }
+      
+      // Scale to Earth radius + altitude
+      point.normalize().multiplyScalar(radius)
+      points.push(point)
+    }
+
+    // Create the line
+    const lineGeometry = new THREE.BufferGeometry().setFromPoints(points)
+    const lineMaterial = new THREE.LineBasicMaterial({ 
+      color: 0xff0000,
+      linewidth: 2
+    })
+    const line = new THREE.Line(lineGeometry, lineMaterial)
+    
+    sceneRef.current.add(line)
+    flightLineRef.current = line
+
+    console.log('Great circle path drawn with', points.length, 'points')
+  }, [flightPath])
+
+  const calculateFlight = () => {
+    if (!airports) {
+      console.log('Airports not loaded yet')
+      return
+    }
+    
+    const departure = airports[departureCode]
+    const arrival = airports[arrivalCode]
+    
+    if (!departure) {
+      console.log('Departure airport not found:', departureCode)
+      return
+    }
+    
+    if (!arrival) {
+      console.log('Arrival airport not found:', arrivalCode)
+      return
+    }
+    
+    console.log('Flight from', departure.city, 'to', arrival.city)
+    console.log('Departure:', departure.lat, departure.lon)
+    console.log('Arrival:', arrival.lat, arrival.lon)
+    
+    // Trigger flight path drawing
+    setFlightPath({ departure, arrival })
+  }
+
   return (
     <div className="app">
       <div className="info-overlay">
-      <div className="time">{simulatedTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
-      <div className="date">{simulatedTime.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</div>    
+        <div className="time">{simulatedTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
+        <div className="date">{simulatedTime.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</div>
       </div>
+      
+      <div className="flight-input">
+        <h3>Flight Path</h3>
+        <div className="input-group">
+          <label>Departure</label>
+          <input 
+            type="text" 
+            placeholder="JFK"
+            maxLength="3"
+            value={departureCode}
+            onChange={(e) => setDepartureCode(e.target.value.toUpperCase())}
+          />
+        </div>
+        <div className="input-group">
+          <label>Arrival</label>
+          <input 
+            type="text" 
+            placeholder="NRT"
+            maxLength="3"
+            value={arrivalCode}
+            onChange={(e) => setArrivalCode(e.target.value.toUpperCase())}
+          />
+        </div>
+        <button 
+          onClick={calculateFlight}
+          disabled={!airports || departureCode.length !== 3 || arrivalCode.length !== 3}
+        >
+          {!airports ? 'Loading airports...' : 'Calculate Flight'}
+        </button>
+      </div>
+      
       <canvas ref={canvasRef} />
     </div>
   )

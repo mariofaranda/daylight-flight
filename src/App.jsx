@@ -834,7 +834,7 @@ function App() {
       // Remove existing graticule if exists
       const existingGraticule = sceneRef.current.getObjectByName('graticule')
       if (existingGraticule) {
-        let opacity = 0.3 // Start from current opacity
+        let opacity = 0.2 // Start from current opacity
         
         const fadeOut = setInterval(() => {
           opacity -= 0.02
@@ -919,8 +919,8 @@ function App() {
           let opacity = 0
           fadeInterval = setInterval(() => {
             opacity += 0.02
-            if (opacity >= 0.3) {
-              opacity = 0.3
+            if (opacity >= 0.2) {
+              opacity = 0.2
               clearInterval(fadeInterval)
             }
             graticuleGroup.traverse((child) => {

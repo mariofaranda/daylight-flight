@@ -339,6 +339,14 @@ canvas {
   margin-top: 4px;
 }
 
+.flight-input:not(.collapsed) .panel-header {
+  padding-bottom: 16px;
+}
+
+.flight-input.collapsed .panel-header {
+  margin-bottom: 0;
+}
+
 .flight-input.collapsed {
   padding: 12px 20px;
 }
@@ -350,12 +358,16 @@ canvas {
 .panel-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
+  height: 24px;
   margin-bottom: 16px;
 }
 
 .panel-header h3 {
   margin: 0;
+  padding: 0;
+  line-height: 24px;
+  flex-shrink: 0;
 }
 
 .flight-input .collapse-button {
@@ -365,20 +377,18 @@ canvas {
   cursor: pointer;
   font-size: 14px;
   padding: 0 !important;
-  width: auto !important;
+  width: 20px !important;
+  height: 20px !important;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: color 0.2s;
   line-height: 1;
   margin: 0;
+  flex-shrink: 0;
 }
 
 .flight-input .collapse-button:hover {
   color: rgba(255, 255, 255, 0.9) !important;
   background: none !important;
-}
-
-.flight-input.collapsed .panel-header {
-  margin-bottom: 0;
 }

@@ -9,6 +9,8 @@ import { DateTime } from 'luxon'
 function App() {
   const canvasRef = useRef(null)
   const autoRotateRef = useRef(true)
+  const cameraRef = useRef(null)
+  const controlsRef = useRef(null)  
   const [currentTime, setCurrentTime] = useState(new Date())
   const [simulatedTime, setSimulatedTime] = useState(new Date())
   const [departureTime, setDepartureTime] = useState(new Date())
@@ -25,6 +27,7 @@ function App() {
   const [showGraticule, setShowGraticule] = useState(false)
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false)
   const [autoRotate, setAutoRotate] = useState(true)
+  
 
 
   
@@ -82,6 +85,7 @@ function App() {
       1000  // far clipping plane
     )
     camera.position.z = 5  // move camera back so we can see the sphere
+    cameraRef.current = camera 
 
     // 3. Create the renderer
     const renderer = new THREE.WebGLRenderer({
@@ -96,6 +100,7 @@ function App() {
     const controls = new OrbitControls(camera, renderer.domElement)
     controls.enableDamping = true  // Smooth motion
     controls.dampingFactor = 0.05
+    controlsRef.current = controls
     controls.minDistance = 3.5  // How close you can zoom
     controls.maxDistance = 3.5  // How far you can zoom
     controls.enablePan = false  // Disable panning
@@ -1039,6 +1044,54 @@ function App() {
       return angularDistance < 90
     }
 
+    const centerCameraOnFlight = (departure, arrival) => {
+      const camera = cameraRef.current
+      const controls = controlsRef.current
+      if (!camera || !controls) {
+        return
+      }
+      
+      // Calculate midpoint
+      const midLat = (departure.lat + arrival.lat) / 2
+      const midLon = (departure.lon + arrival.lon) / 2
+      
+      // Calculate target camera position
+      const phi = (90 - midLat) * (Math.PI / 180)
+      const theta = (midLon + 180) * (Math.PI / 180)
+      const radius = 4
+      
+      const targetPosition = new THREE.Vector3(
+        -radius * Math.sin(phi) * Math.cos(theta),
+        radius * Math.cos(phi),
+        radius * Math.sin(phi) * Math.sin(theta)
+      )
+      
+      // Smooth animation to target position
+      const startPosition = camera.position.clone()
+      const duration = 1500 // ms
+      const startTime = Date.now()
+      
+      const animateCamera = () => {
+        const elapsed = Date.now() - startTime
+        const progress = Math.min(elapsed / duration, 1)
+        
+        // Ease-in-out
+        const eased = progress < 0.5
+          ? 2 * progress * progress
+          : 1 - Math.pow(-2 * progress + 2, 2) / 2
+        
+        camera.position.lerpVectors(startPosition, targetPosition, eased)
+        camera.lookAt(0, 0, 0)
+        controls.update()
+        
+        if (progress < 1) {
+          requestAnimationFrame(animateCamera)
+        }
+      }
+      
+      animateCamera()
+    }
+
     const calculateFlight = () => {
       if (!airports) {
         console.log('Airports not loaded yet')
@@ -1156,6 +1209,9 @@ function App() {
       // Reset animation progress when new flight is calculated
       setAnimationProgress(0)
       animationProgressRef.current = 0
+
+      // Center camera on flight path
+      centerCameraOnFlight(departure, arrival)
 
       // Stop auto-rotation when flight is calculated
       setAutoRotate(false)

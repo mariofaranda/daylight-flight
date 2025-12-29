@@ -80,7 +80,7 @@ function App() {
 
 
     // Create night hemisphere
-    const nightGeometry = new THREE.SphereGeometry(2.02, 64, 64)
+    const nightGeometry = new THREE.SphereGeometry(2.003, 64, 64)
     const nightMaterial = new THREE.MeshBasicMaterial({
       color: 0x000000,  // black instead of red
       transparent: true,

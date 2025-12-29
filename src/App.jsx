@@ -33,11 +33,22 @@ function App() {
 
     // 4. Create a sphere (our Earth)
     const geometry = new THREE.SphereGeometry(2, 64, 64)
+
+    // Load simplified Earth texture
+    const textureLoader = new THREE.TextureLoader()
+    const earthTexture = textureLoader.load(
+      '/earth-texture.png',  // Your custom texture
+      () => console.log('Earth texture loaded'),
+      undefined,
+      (error) => console.error('Error loading texture:', error)
+    )
+
     const material = new THREE.MeshStandardMaterial({
-      color: 0x9d9d9d,
-      roughness: 0.7,
-      metalness: 0.1
+      map: earthTexture,
+      roughness: 0.9,
+      metalness: 0.0
     })
+
     const sphere = new THREE.Mesh(geometry, material)
     scene.add(sphere)
 
@@ -98,7 +109,7 @@ function App() {
       requestAnimationFrame(animate)
       
       // Rotate ONLY the Earth, not the night hemisphere
-      sphere.rotation.y += 0.005
+      sphere.rotation.y += 0.002
       
       renderer.render(scene, camera)
     }

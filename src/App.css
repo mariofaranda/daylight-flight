@@ -25,7 +25,7 @@ canvas {
   gap: 8px;
   cursor: pointer;
   font-size: 13px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .airport-toggle input[type="checkbox"] {
@@ -65,20 +65,24 @@ canvas {
 .flight-input {
   position: absolute;
   top: 20px;
-  right: 20px;
-  background: rgba(255, 255, 255, 0.95);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   font-family: system-ui, -apple-system, sans-serif;
-  min-width: 280px;
+  min-width: 400px;
 }
 
 .flight-input h3 {
   margin: 0 0 16px 0;
   font-size: 16px;
   font-weight: 600;
-  color: #333;
+  color: #fff;
 }
 
 .input-group {
@@ -88,7 +92,7 @@ canvas {
 .input-group label {
   display: block;
   font-size: 12px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.7);
   margin-bottom: 4px;
   font-weight: 500;
 }
@@ -137,7 +141,7 @@ canvas {
 .datetime-group label {
   display: block;
   font-size: 12px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.7);
   margin-bottom: 4px;
   font-weight: 500;
 }
@@ -158,7 +162,7 @@ canvas {
 .results-panel {
   margin-top: 16px;
   padding: 12px;
-  background: #f8f8f8;
+  background: transparent;
   border-radius: 4px;
   font-size: 13px;
 }
@@ -170,12 +174,12 @@ canvas {
 }
 
 .result-label {
-  color: #666;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .result-value {
   font-weight: 600;
-  color: #333;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .animation-controls {
@@ -310,4 +314,48 @@ canvas {
   font-size: 11px;
   color: #999;
   margin-top: 4px;
+}
+
+.flight-input.collapsed {
+  padding: 12px 20px;
+}
+
+.flight-input.collapsed .panel-content {
+  display: none !important;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.panel-header h3 {
+  margin: 0;
+}
+
+.flight-input .collapse-button {
+  background: none !important;
+  border: none !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 !important;
+  width: auto !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+  line-height: 1;
+  margin: 0;
+}
+
+.flight-input .collapse-button:hover {
+  color: rgba(255, 255, 255, 0.9) !important;
+  background: none !important;
+}
+
+.flight-input.collapsed .panel-header {
+  margin-bottom: 0;
 }

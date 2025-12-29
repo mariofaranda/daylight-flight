@@ -19,6 +19,7 @@ function App() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [animationProgress, setAnimationProgress] = useState(0) // 0 to 1
   const [showAirports, setShowAirports] = useState(false)
+  const [isPanelCollapsed, setIsPanelCollapsed] = useState(false)
   
   // Store scene reference to add/remove flight path
   const sceneRef = useRef(null)
@@ -993,141 +994,153 @@ function App() {
           <div className="date">{simulatedTime.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</div>
         </div>
         
-        <div className="flight-input">
-          <h3>Flight Path</h3>
-          <div className="input-group">
-            <label>Departure</label>
-            <input 
-              type="text" 
-              maxLength="3"
-              value={departureCode}
-              onChange={(e) => setDepartureCode(e.target.value.toUpperCase())}
-            />
+        <div className={`flight-input ${isPanelCollapsed ? 'collapsed' : ''}`}>
+          <div className="panel-header">
+            <h3>Flight Path</h3>
+            <button 
+              className="collapse-button"
+              onClick={() => setIsPanelCollapsed(!isPanelCollapsed)}
+              aria-label={isPanelCollapsed ? "Expand panel" : "Collapse panel"}
+            >
+              {isPanelCollapsed ? '▼' : '▲'}
+            </button>
           </div>
-          <div className="input-group">
-            <label>Arrival</label>
-            <input 
-              type="text" 
-              maxLength="3"
-              value={arrivalCode}
-              onChange={(e) => setArrivalCode(e.target.value.toUpperCase())}
-            />
-          </div>
-          <div className="datetime-group">
-            <label>Departure Time (Local)</label>
-            <input 
-              type="datetime-local"
-              value={departureTime.toISOString().slice(0, 16)}
-              onChange={(e) => setDepartureTime(new Date(e.target.value))}
-            />
-          </div>
-          <button 
-            onClick={calculateFlight}
-            disabled={!airports || departureCode.length !== 3 || arrivalCode.length !== 3}
-          >
-            {!airports ? 'Loading airports...' : 'Calculate Flight'}
-          </button>
           
-          {flightResults && (
-            <div className="results-panel">
-              <div className="result-row">
-                <span className="result-label">Distance:</span>
-                <span className="result-value">{flightResults.distance} km</span>
-              </div>
-              <div className="result-row">
-                <span className="result-label">Duration:</span>
-                <span className="result-value">{flightResults.durationHours}h {flightResults.durationMins}m</span>
-              </div>
-              <div className="result-row">
-                <span className="result-label">Daylight:</span>
-                <span className="result-value">{flightResults.daylightHours}h {flightResults.daylightMins}m</span>
-              </div>
-              <div className="result-row">
-                <span className="result-label">Darkness:</span>
-                <span className="result-value">{flightResults.darknessHours}h {flightResults.darknessMins}m</span>
-              </div>
-            </div>
-          )}
-
-          <div className="airport-toggle">
-            <label>
+          <div className="panel-content">
+            <div className="input-group">
+              <label>Departure</label>
               <input 
-                type="checkbox"
-                checked={showAirports}
-                onChange={(e) => setShowAirports(e.target.checked)}
+                type="text" 
+                maxLength="3"
+                value={departureCode}
+                onChange={(e) => setDepartureCode(e.target.value.toUpperCase())}
               />
-              <span>Show all airports</span>
-            </label>
+            </div>
+            <div className="input-group">
+              <label>Arrival</label>
+              <input 
+                type="text" 
+                maxLength="3"
+                value={arrivalCode}
+                onChange={(e) => setArrivalCode(e.target.value.toUpperCase())}
+              />
+            </div>
+            <div className="datetime-group">
+              <label>Departure Time (Local)</label>
+              <input 
+                type="datetime-local"
+                value={departureTime.toISOString().slice(0, 16)}
+                onChange={(e) => setDepartureTime(new Date(e.target.value))}
+              />
+            </div>
+            <button 
+              onClick={calculateFlight}
+              disabled={!airports || departureCode.length !== 3 || arrivalCode.length !== 3}
+            >
+              {!airports ? 'Loading airports...' : 'Calculate Flight'}
+            </button>
+            
+            {flightResults && (
+              <div className="results-panel">
+                <div className="result-row">
+                  <span className="result-label">Distance:</span>
+                  <span className="result-value">{flightResults.distance} km</span>
+                </div>
+                <div className="result-row">
+                  <span className="result-label">Duration:</span>
+                  <span className="result-value">{flightResults.durationHours}h {flightResults.durationMins}m</span>
+                </div>
+                <div className="result-row">
+                  <span className="result-label">Daylight:</span>
+                  <span className="result-value">{flightResults.daylightHours}h {flightResults.daylightMins}m</span>
+                </div>
+                <div className="result-row">
+                  <span className="result-label">Darkness:</span>
+                  <span className="result-value">{flightResults.darknessHours}h {flightResults.darknessMins}m</span>
+                </div>
+              </div>
+            )}
+    
+            <div className="airport-toggle">
+              <label>
+                <input 
+                  type="checkbox"
+                  checked={showAirports}
+                  onChange={(e) => setShowAirports(e.target.checked)}
+                />
+                <span>Show all airports</span>
+              </label>
+            </div>
           </div>
         </div>
         
         <canvas ref={canvasRef} />
-
-          {flightResults && (
-            <div className={`animation-controls ${flightPath ? 'visible' : ''}`}>
-              <div className="animation-header">
-                <div className="airport-time airport-time-left">
-                  <span className="airport-code">
-                    {flightDataRef.current && getTimezoneAbbreviation(flightDataRef.current.departure)}
-                  </span>
-                  <span className="time-value">
-                    {flightDataRef.current && getLocalTimeAtAirport(
-                      new Date(flightDataRef.current.departureTime.getTime() + animationProgress * flightDataRef.current.flightDurationMs),
-                      flightDataRef.current.departure
-                    )}
-                  </span>
+    
+        {flightResults && (
+          <div className={`animation-controls ${flightPath ? 'visible' : ''}`}>
+            <div className="animation-header">
+              <div className="airport-time airport-time-left">
+                <span className="airport-code">
+                  {flightDataRef.current && getTimezoneAbbreviation(flightDataRef.current.departure)}
+                </span>
+                <span className="time-value">
+                  {flightDataRef.current && getLocalTimeAtAirport(
+                    new Date(flightDataRef.current.departureTime.getTime() + animationProgress * flightDataRef.current.flightDurationMs),
+                    flightDataRef.current.departure
+                  )}
+                </span>
+              </div>
+    
+              <div className="flight-info-center">
+                <div className="animation-route">
+                  {departureCode} → {arrivalCode}
                 </div>
-
-                <div className="flight-info-center">
-                  <div className="animation-route">
-                    {departureCode} → {arrivalCode}
-                  </div>
-                  <div className="animation-time">
-                    {formatFlightTime(animationProgress, flightResults)}
-                  </div>
-                </div>
-
-                <div className="airport-time airport-time-right">
-                  <span className="airport-code">
-                    {flightDataRef.current && getTimezoneAbbreviation(flightDataRef.current.arrival)}
-                  </span>
-                  <span className="time-value">
-                    {flightDataRef.current && getLocalTimeAtAirport(
-                      new Date(flightDataRef.current.departureTime.getTime() + animationProgress * flightDataRef.current.flightDurationMs),
-                      flightDataRef.current.arrival
-                    )}
-                  </span>
+                <div className="animation-time">
+                  {formatFlightTime(animationProgress, flightResults)}
                 </div>
               </div>
-              
-              <div className="slider-container">
-                <input
-                  type="range"
-                  min="0"
-                  max="1000"
-                  value={animationProgress * 1000}
-                  onChange={(e) => {
-                    const newProgress = e.target.value / 1000
-                    setAnimationProgress(newProgress)
-                    animationProgressRef.current = newProgress
-                  }}
-                  className="time-slider"
-                />
-                <div className="time-labels">
-                  <span>Departure</span>
-                  <span>Arrival</span>
-                </div>
+    
+              <div className="airport-time airport-time-right">
+                <span className="airport-code">
+                  {flightDataRef.current && getTimezoneAbbreviation(flightDataRef.current.arrival)}
+                </span>
+                <span className="time-value">
+                  {flightDataRef.current && getLocalTimeAtAirport(
+                    new Date(flightDataRef.current.departureTime.getTime() + animationProgress * flightDataRef.current.flightDurationMs),
+                    flightDataRef.current.arrival
+                  )}
+                </span>
               </div>
-              
-              <button 
-                className="play-button"
-                onClick={() => setIsPlaying(!isPlaying)}
-              >
-                {isPlaying ? '⏸ Pause' : '▶ Play'}
-              </button>
             </div>
-          )}
-
+            
+            <div className="slider-container">
+              <input
+                type="range"
+                min="0"
+                max="1000"
+                value={animationProgress * 1000}
+                onChange={(e) => {
+                  const newProgress = e.target.value / 1000
+                  setAnimationProgress(newProgress)
+                  animationProgressRef.current = newProgress
+                }}
+                className="time-slider"
+              />
+              <div className="time-labels">
+                <span>Departure</span>
+                <span>Arrival</span>
+              </div>
+            </div>
+            
+            <button 
+              className="play-button"
+              onClick={() => setIsPlaying(!isPlaying)}
+            >
+              {isPlaying ? '⏸ Pause' : '▶ Play'}
+            </button>
+          </div>
+        )}
+    
       </div>
     )
 }

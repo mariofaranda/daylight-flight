@@ -784,19 +784,31 @@ function App() {
     useEffect(() => {
       if (!isPlaying || !flightDataRef.current) return
       
+      // Get flight distance in km from flightResults
+      const flightDistanceKm = flightResults ? parseFloat(flightResults.distance) : 5000
+      
+      // Define speed in km per second of animation
+      const kmPerSecond = 500 // Adjust this! Higher = faster line movement
+      
+      // Calculate total animation duration based on distance
+      const animationDurationMs = (flightDistanceKm / kmPerSecond) * 1000
+      
+      const updateInterval = 50
+      const increment = updateInterval / animationDurationMs
+      
       const interval = setInterval(() => {
         setAnimationProgress(prev => {
-          const newProgress = prev >= 1 ? 1 : prev + 0.005
-          animationProgressRef.current = newProgress  // Update ref too
+          const newProgress = prev >= 1 ? 1 : prev + increment
+          animationProgressRef.current = newProgress
           if (newProgress >= 1) {
             setIsPlaying(false)
           }
           return newProgress
         })
-      }, 50)
+      }, updateInterval)
       
       return () => clearInterval(interval)
-    }, [isPlaying])
+    }, [isPlaying, flightResults])
 
     const isPointInDaylight = (lat, lon, time) => {
       // Get subsolar point at this time

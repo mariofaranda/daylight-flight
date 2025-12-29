@@ -430,3 +430,25 @@ canvas {
   text-overflow: ellipsis;
   max-width: 200px; 
 }
+
+.plane-toggle-overlay {
+  position: absolute;
+  bottom: 80px;
+  left: 20px;
+  pointer-events: all;
+}
+
+.plane-toggle-overlay label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.plane-toggle-overlay input[type="checkbox"] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+}

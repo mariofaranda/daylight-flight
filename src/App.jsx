@@ -27,9 +27,7 @@ function App() {
   const [showGraticule, setShowGraticule] = useState(false)
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false)
   const [autoRotate, setAutoRotate] = useState(true)
-  
-
-
+  const [showPlaneIcon, setShowPlaneIcon] = useState(true)
   
   // Store scene reference to add/remove flight path
   const sceneRef = useRef(null)
@@ -38,6 +36,8 @@ function App() {
   const animationProgressRef = useRef(0) 
   const hasFlightPathRef = useRef(false)
   const progressTubeRef = useRef(null)
+  const planeIconRef = useRef(null)
+  const showPlaneIconRef = useRef(true)
 
   useEffect(() => {
     if (!canvasRef.current) return
@@ -127,6 +127,24 @@ function App() {
 
     const sphere = new THREE.Mesh(geometry, material)
     scene.add(sphere)
+
+    // Load plane icon
+    const planeTexture = new THREE.TextureLoader().load('/plane-icon.svg')
+
+    // Create a plane mesh instead of sprite
+    const planeGeometry = new THREE.PlaneGeometry(0.05, 0.05)
+    planeGeometry.rotateX(Math.PI / 2)  // Rotate geometry 90° around X axis
+    planeGeometry.rotateY(Math.PI)
+    const planeMaterial = new THREE.MeshBasicMaterial({
+      map: planeTexture,
+      transparent: true,
+      side: THREE.DoubleSide
+    })
+    const planeMesh = new THREE.Mesh(planeGeometry, planeMaterial)
+    planeMesh.visible = false
+
+    scene.add(planeMesh)
+    planeIconRef.current = planeMesh
 
     // Add atmospheric glow
     const glowGeometry = new THREE.SphereGeometry(2.15, 64, 64)
@@ -516,6 +534,43 @@ function App() {
             flightLineRef.current.add(thickTube)
             progressTubeRef.current = thickTube
           }
+        }
+      }
+
+      // Update plane icon position and rotation
+      if (hasFlightPathRef.current && flightLineRef.current && planeIconRef.current) {
+        const progress = animationProgressRef.current
+        const curve = flightLineRef.current.userData.routeCurve
+        
+        if (curve && progress > 0 && progress < 1) {
+          // Get current position
+          const position = curve.getPoint(progress)
+          
+          // Get tangent (direction of travel)
+          const tangent = curve.getTangent(progress).normalize()
+          
+          // Get normal (pointing away from Earth)
+          const normal = position.clone().normalize()
+          
+          // Calculate right vector
+          const right = new THREE.Vector3().crossVectors(tangent, normal).normalize()
+          
+          // Recalculate up to ensure orthogonal
+          const up = new THREE.Vector3().crossVectors(right, tangent).normalize()
+          
+          // Position plane slightly above surface and ahead along the path
+          const surfaceOffset = normal.clone().multiplyScalar(0.02) // Adjust this value
+          const forwardOffset = tangent.clone().multiplyScalar(0.04)  // Adjust this value
+          planeIconRef.current.position.copy(position).add(surfaceOffset).add(forwardOffset)
+          
+          // Set orientation using basis vectors
+          const matrix = new THREE.Matrix4()
+          matrix.makeBasis(right, up, tangent.negate())
+          planeIconRef.current.quaternion.setFromRotationMatrix(matrix)
+          
+          planeIconRef.current.visible = showPlaneIconRef.current
+        } else {
+          if (planeIconRef.current) planeIconRef.current.visible = false
         }
       }
 
@@ -1281,6 +1336,20 @@ function App() {
               onChange={(e) => setShowGraticule(e.target.checked)}
             />
             <span>Show graticule</span>
+          </label>
+        </div>
+
+        <div className="plane-toggle-overlay">
+          <label>
+            <input 
+              type="checkbox"
+              checked={showPlaneIcon}
+              onChange={(e) => {
+                setShowPlaneIcon(e.target.checked)
+                showPlaneIconRef.current = e.target.checked
+              }}
+            />
+            <span>Show plane icon</span>
           </label>
         </div>
         

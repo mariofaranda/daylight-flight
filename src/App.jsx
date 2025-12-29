@@ -23,6 +23,7 @@ function App() {
   const flightDataRef = useRef(null)
   const animationProgressRef = useRef(0) 
   const hasFlightPathRef = useRef(false)
+  const progressTubeRef = useRef(null)
 
   useEffect(() => {
     if (!canvasRef.current) return
@@ -341,6 +342,48 @@ function App() {
         updateSunPosition()
       }
 
+      // Update flight path progress visualization
+      if (hasFlightPathRef.current && flightLineRef.current && flightLineRef.current.userData.routeCurve) {
+        const progress = animationProgressRef.current
+        
+        // Remove old progress tube if exists
+        if (progressTubeRef.current) {
+          flightLineRef.current.remove(progressTubeRef.current)
+          progressTubeRef.current.geometry.dispose()
+          progressTubeRef.current.material.dispose()
+        }
+        
+        if (progress > 0) {
+          // Get points for completed portion
+          const curve = flightLineRef.current.userData.routeCurve
+          const completedPoints = []
+          const numSamples = 50
+          
+          for (let i = 0; i <= numSamples; i++) {
+            const t = (i / numSamples) * progress
+            completedPoints.push(curve.getPoint(t))
+          }
+          
+          if (completedPoints.length > 1) {
+            // Create thick tube for completed portion
+            const thickGeometry = new THREE.TubeGeometry(
+              new THREE.CatmullRomCurve3(completedPoints),
+              completedPoints.length,
+              0.006,  // Thicker
+              8,
+              false
+            )
+            const thickMaterial = new THREE.MeshBasicMaterial({ 
+              color: 0xffffff
+            })
+            const thickTube = new THREE.Mesh(thickGeometry, thickMaterial)
+            
+            flightLineRef.current.add(thickTube)
+            progressTubeRef.current = thickTube
+          }
+        }
+      }
+
       // Keep location dot constant size
       const currentDistance = camera.position.length()
       const baseDistance = 5  // Initial camera distance
@@ -440,19 +483,25 @@ function App() {
         points.push(point)
       }
 
-      // Create the flight path tube
-      const tubeGeometry = new THREE.TubeGeometry(
+      // Create the thin remaining path (base)
+      const thinTubeGeometry = new THREE.TubeGeometry(
         new THREE.CatmullRomCurve3(points),
         points.length,
-        0.004,
+        0.002,  // Thin
         8,
         false
       )
-      const tubeMaterial = new THREE.MeshBasicMaterial({ 
-        color: 0xffffff
+      const thinTubeMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.3
       })
-      const tube = new THREE.Mesh(tubeGeometry, tubeMaterial)
-      flightGroup.add(tube)
+      const thinTube = new THREE.Mesh(thinTubeGeometry, thinTubeMaterial)
+      flightGroup.add(thinTube)
+
+      // Store points for animated thick tube
+      flightGroup.userData.routePoints = points
+      flightGroup.userData.routeCurve = new THREE.CatmullRomCurve3(points)
 
       // Add airport markers (dots)
       const dotGeometry = new THREE.SphereGeometry(0.01, 16, 16)

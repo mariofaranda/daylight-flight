@@ -51,7 +51,7 @@ function App() {
 
     // 1. Create the scene
     const scene = new THREE.Scene()
-    scene.background = new THREE.Color(0xe8e6e3) // warm light gray
+    scene.background = new THREE.Color(0x606569) // warm light gray
     sceneRef.current = scene  // Store scene reference
 
     // 2. Create the camera
@@ -176,7 +176,7 @@ function App() {
     const times = SunCalc.getTimes(initialTime, 0, 0)
     const solarNoon = times.solarNoon
     const hoursSinceNoon = (initialTime - solarNoon) / (1000 * 60 * 60)
-    const subsolarLongitude = hoursSinceNoon * 15 // 15° per hour
+    const subsolarLongitude = -hoursSinceNoon * 15 // 15° per hour westward
 
     // Solar declination (latitude where sun is overhead)
     const dayOfYear = Math.floor((initialTime - new Date(initialTime.getFullYear(), 0, 0)) / 86400000)
@@ -239,7 +239,7 @@ function App() {
       const times = SunCalc.getTimes(currentTime, 0, 0)
       const solarNoon = times.solarNoon
       const hoursSinceNoon = (currentTime - solarNoon) / (1000 * 60 * 60)
-      const subsolarLongitude = hoursSinceNoon * 15
+      const subsolarLongitude = -hoursSinceNoon * 15
 
       // Solar declination
       const dayOfYear = Math.floor((currentTime - new Date(currentTime.getFullYear(), 0, 0)) / 86400000)

@@ -132,7 +132,7 @@ function App() {
     const planeTexture = new THREE.TextureLoader().load('/plane-icon.svg')
 
     // Create a plane mesh instead of sprite
-    const planeGeometry = new THREE.PlaneGeometry(0.05, 0.05)
+    const planeGeometry = new THREE.PlaneGeometry(0.04, 0.04)
     planeGeometry.rotateX(Math.PI / 2)  // Rotate geometry 90° around X axis
     planeGeometry.rotateY(Math.PI)
     const planeMaterial = new THREE.MeshBasicMaterial({
@@ -560,7 +560,7 @@ function App() {
           
           // Position plane slightly above surface and ahead along the path
           const surfaceOffset = normal.clone().multiplyScalar(0.02) // Adjust this value
-          const forwardOffset = tangent.clone().multiplyScalar(0.04)  // Adjust this value
+          const forwardOffset = tangent.clone().multiplyScalar(0.035)  // Adjust this value
           planeIconRef.current.position.copy(position).add(surfaceOffset).add(forwardOffset)
           
           // Set orientation using basis vectors
@@ -1305,6 +1305,14 @@ function App() {
       return `${hours}h ${mins}m elapsed`
     }
 
+    const getLocalDateTimeString = (date, airport) => {
+      if (!airport) return ''
+      
+      const timezone = getAirportTimezone(airport)
+      const dt = DateTime.fromJSDate(date, { zone: timezone })
+      return dt.toFormat("yyyy-MM-dd'T'HH:mm")
+    }
+
     return (
       <div className="app">
         <div className="info-overlay">
@@ -1419,8 +1427,16 @@ function App() {
               <label>Departure Time (Local)</label>
               <input 
                 type="datetime-local"
-                value={departureTime.toISOString().slice(0, 16)}
-                onChange={(e) => setDepartureTime(new Date(e.target.value))}
+                value={departureAirport && departureTime ? getLocalDateTimeString(departureTime, departureAirport) : ''}
+                onChange={(e) => {
+                  if (!departureAirport) return
+                  
+                  const timezone = getAirportTimezone(departureAirport)
+                  const localDateTime = DateTime.fromISO(e.target.value, { zone: timezone })
+                  setDepartureTime(localDateTime.toJSDate())
+                }}
+                disabled={!departureAirport}
+                style={{ opacity: departureAirport ? 1 : 0.5 }}
               />
             </div>
             <button 

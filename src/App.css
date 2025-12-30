@@ -113,6 +113,7 @@ canvas {
   cursor: pointer;
   width: 16px;
   height: 16px;
+  accent-color: #2d2e2f;
 }
 
 .airport-toggle-overlay {
@@ -135,6 +136,7 @@ canvas {
   cursor: pointer;
   width: 16px;
   height: 16px;
+  accent-color: #2d2e2f;
 }
 
 .graticule-toggle-overlay {
@@ -157,13 +159,14 @@ canvas {
   cursor: pointer;
   width: 16px;
   height: 16px;
+  accent-color: #2d2e2f;
 }
 
 .flight-info-center {
   display: flex;
   flex-direction: column;
   align-items: center;
-  flex: 0 0 auto;
+  flex: 1;
 }
 
 .info-overlay {
@@ -346,6 +349,10 @@ canvas {
 }
 
 .animation-route {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   font-size: 14px;
   font-weight: 600;
   color: #fff;
@@ -361,31 +368,37 @@ canvas {
 .airport-time {
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 4px;
-  flex: 1;
+  flex: 0 0 auto;
 }
 
 .airport-time-left {
   align-items: flex-start;
+  text-align: center;
+  min-width: 100px;
 }
 
 .airport-time-right {
-  align-items: flex-end;
+  align-items: flex-end;  /* Align right within its space */
+  text-align: center;
+  min-width: 100px;
 }
 
 .airport-code {
+  display: block;
   font-size: 11px;
   color: rgba(255, 255, 255, 0.5);
   text-transform: uppercase;
   font-weight: 500;
+  text-align: center;
 }
 
 .time-value {
-  font-size: 20px;
+  display: block;
+  font-size: 26px;
   font-weight: 600;
   color: #fff;
-  font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+  font-family: 'VT323', monospace;
 }
 
 .slider-container {
@@ -553,6 +566,7 @@ canvas {
   cursor: pointer;
   width: 16px;
   height: 16px;
+  accent-color: #2d2e2f;
 }
 
 .fir-toggle-overlay {
@@ -575,6 +589,14 @@ canvas {
   cursor: pointer;
   width: 16px;
   height: 16px;
+  accent-color: #2d2e2f;
+}
+
+.route-plane-icon {
+  width: 14px;
+  height: 14px;
+  opacity: 0.9;
+    transform: rotate(90deg);
 }
 
 .version-info {

@@ -628,9 +628,16 @@ function App() {
           matrix.makeBasis(right, up, tangent.negate())
           planeIconRef.current.quaternion.setFromRotationMatrix(matrix)
           
-          planeIconRef.current.visible = showPlaneIconRef.current
+          // Fade out near the end
+          let opacity = 1
+          if (progress > 0.95) {
+            opacity = (1 - progress) / 0.05  // Fade out in last 5%
+          }
+          
+          planeIconRef.current.material.opacity = showPlaneIconRef.current ? opacity : 0
+          planeIconRef.current.visible = showPlaneIconRef.current && opacity > 0
         } else {
-          if (planeIconRef.current) planeIconRef.current.visible = false
+          planeIconRef.current.visible = false
         }
       }
 
@@ -1255,6 +1262,36 @@ function App() {
       return () => clearInterval(interval)
     }, [isPlaying, flightResults])
 
+    // Keyboard controls for animation
+    useEffect(() => {
+      const handleKeyPress = (e) => {
+        // Only respond to spacebar when there's a flight
+        if (e.code === 'Space' && flightResults) {
+          e.preventDefault() // Prevent page scroll
+          
+          if (animationProgress >= 1) {
+            // Reset to beginning if at end
+            setAnimationProgress(0)
+            animationProgressRef.current = 0
+          }
+          
+          setIsPlaying(!isPlaying)
+        }
+
+          // P for plane toggle
+        if (e.key === 'p' || e.key === 'P') {
+          setShowPlaneIcon(!showPlaneIcon)
+          showPlaneIconRef.current = !showPlaneIcon
+        }
+      }
+      
+      window.addEventListener('keydown', handleKeyPress)
+      
+      return () => {
+        window.removeEventListener('keydown', handleKeyPress)
+      }
+    }, [isPlaying, flightResults, animationProgress, showPlaneIcon])
+
     const isPointInDaylight = (lat, lon, time) => {
       // Get subsolar point at this time
       const times = SunCalc.getTimes(time, 0, 0)
@@ -1483,7 +1520,7 @@ function App() {
       const elapsedMins = Math.round(progress * totalMins)
       const hours = Math.floor(elapsedMins / 60)
       const mins = elapsedMins % 60
-      return `${hours}h ${mins}m elapsed`
+      return `${hours}h ${mins}m`
     }
 
     const getLocalDateTimeString = (date, airport) => {
@@ -1829,7 +1866,9 @@ function App() {
     
               <div className="flight-info-center">
                 <div className="animation-route">
-                  {departureCode} → {arrivalCode}
+                  <span>{departureCode}</span>
+                  <img src="/plane-icon.svg" alt="→" className="route-plane-icon" />
+                  <span>{arrivalCode}</span>
                 </div>
                 <div className="animation-time">
                   {formatFlightTime(animationProgress, flightResults)}

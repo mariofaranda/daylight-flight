@@ -28,7 +28,9 @@ function App() {
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false)
   const [autoRotate, setAutoRotate] = useState(true)
   const [showPlaneIcon, setShowPlaneIcon] = useState(true)
+  const [showFIR, setShowFIR] = useState(false)
   const [showClouds, setShowClouds] = useState(true)
+
   
   // Store scene reference to add/remove flight path
   const sceneRef = useRef(null)
@@ -147,7 +149,7 @@ function App() {
       depthWrite: false,
       color: 0xffffff  // White tint - brightens the texture
     })
-    
+
     const cloudLayer = new THREE.Mesh(cloudGeometry, cloudMaterial)
     scene.add(cloudLayer)
     cloudLayerRef.current = cloudLayer
@@ -1074,6 +1076,122 @@ function App() {
       }
     }, [showGraticule])
 
+    // Effect to show/hide FIR boundaries
+    useEffect(() => {
+      if (!sceneRef.current) return
+      
+      let fadeInterval = null
+      
+      // Remove existing FIR if exists
+      const existingFIR = sceneRef.current.getObjectByName('fir-boundaries')
+      if (existingFIR) {
+        let opacity = 0.5
+        
+        const fadeOut = setInterval(() => {
+          opacity -= 0.02
+          if (opacity <= 0) {
+            clearInterval(fadeOut)
+            sceneRef.current.remove(existingFIR)
+            existingFIR.traverse((child) => {
+              if (child.geometry) child.geometry.dispose()
+              if (child.material) child.material.dispose()
+            })
+          } else {
+            existingFIR.traverse((child) => {
+              if (child.material) {
+                child.material.opacity = opacity
+              }
+            })
+          }
+        }, 20)
+      }
+      
+      if (!showFIR) return
+      
+      // Load and render FIR boundaries
+      fetch('/fir-boundaries.geojson')
+        .then(res => res.json())
+        .then(data => {
+          const firGroup = new THREE.Group()
+          firGroup.name = 'fir-boundaries'
+          
+          // Convert lat/lon to 3D
+          const latLonToVector3 = (lon, lat, radius) => {
+            const phi = (90 - lat) * (Math.PI / 180)
+            const theta = (lon + 180) * (Math.PI / 180)
+            
+            return new THREE.Vector3(
+              -radius * Math.sin(phi) * Math.cos(theta),
+              radius * Math.cos(phi),
+              radius * Math.sin(phi) * Math.sin(theta)
+            )
+          }
+          
+          // Process each feature (FIR boundary)
+          data.features.forEach(feature => {
+            if (feature.geometry.type === 'Polygon') {
+              feature.geometry.coordinates.forEach(ring => {
+                const points = ring.map(coord => 
+                  latLonToVector3(coord[0], coord[1], 2.005)
+                )
+                
+                const lineGeometry = new THREE.BufferGeometry().setFromPoints(points)
+                const lineMaterial = new THREE.LineBasicMaterial({
+                  color: 0xff9900,  // Orange for FIR boundaries
+                  transparent: true,
+                  opacity: 0
+                })
+                
+                const line = new THREE.Line(lineGeometry, lineMaterial)
+                firGroup.add(line)
+              })
+            } else if (feature.geometry.type === 'MultiPolygon') {
+              feature.geometry.coordinates.forEach(polygon => {
+                polygon.forEach(ring => {
+                  const points = ring.map(coord => 
+                    latLonToVector3(coord[0], coord[1], 2.005)
+                  )
+                  
+                  const lineGeometry = new THREE.BufferGeometry().setFromPoints(points)
+                  const lineMaterial = new THREE.LineBasicMaterial({
+                    color: 0xff9900,
+                    transparent: true,
+                    opacity: 0
+                  })
+                  
+                  const line = new THREE.Line(lineGeometry, lineMaterial)
+                  firGroup.add(line)
+                })
+              })
+            }
+          })
+          
+          sceneRef.current.add(firGroup)
+          
+          // Fade in
+          let opacity = 0
+          fadeInterval = setInterval(() => {
+            opacity += 0.02
+            if (opacity >= 0.5) {
+              opacity = 0.5
+              clearInterval(fadeInterval)
+            }
+            firGroup.traverse((child) => {
+              if (child.material) {
+                child.material.opacity = opacity
+              }
+            })
+          }, 20)
+          
+          console.log('FIR boundaries loaded with', data.features.length, 'regions')
+        })
+        .catch(err => console.error('Error loading FIR boundaries:', err))
+      
+      return () => {
+        if (fadeInterval) clearInterval(fadeInterval)
+      }
+    }, [showFIR])
+
     useEffect(() => {
       if (!isPlaying || !flightDataRef.current) return
       
@@ -1387,6 +1505,17 @@ function App() {
               }}
             />
             <span>Show plane icon</span>
+          </label>
+        </div>
+
+        <div className="fir-toggle-overlay">
+          <label>
+            <input 
+              type="checkbox"
+              checked={showFIR}
+              onChange={(e) => setShowFIR(e.target.checked)}
+            />
+            <span>Show FIR boundaries</span>
           </label>
         </div>
 

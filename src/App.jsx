@@ -6,6 +6,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import tzlookup from 'tz-lookup'
 import { DateTime } from 'luxon'
 import packageJson from '../package.json'
+import ReactMarkdown from 'react-markdown'
 
 function App() {
   const canvasRef = useRef(null)
@@ -40,6 +41,9 @@ function App() {
   const [arrivalResults, setArrivalResults] = useState([])
   const [showArrivalSuggestions, setShowArrivalSuggestions] = useState(false)
   const [selectedArrivalIndex, setSelectedArrivalIndex] = useState(-1)
+  const [showSidePanel, setShowSidePanel] = useState(false)
+  const [sidePanelContent, setSidePanelContent] = useState('')
+  const [sidePanelTitle, setSidePanelTitle] = useState('')
 
   
   // Store scene reference to add/remove flight path
@@ -1567,6 +1571,18 @@ function App() {
       return results
     }
 
+    const loadMarkdownContent = async (filename, title) => {
+      try {
+        const response = await fetch(`/content/${filename}`)
+        const text = await response.text()
+        setSidePanelContent(text)
+        setSidePanelTitle(title)
+        setShowSidePanel(true)
+      } catch (error) {
+        console.error('Error loading content:', error)
+      }
+    }
+
     return (
       <div className={`app ${isLoading ? 'loading' : 'loaded'}`}>
         <div className="info-overlay">
@@ -1577,6 +1593,21 @@ function App() {
         <div className="info-overlay">
           <div className="time">{simulatedTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
           <div className="date">{simulatedTime.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</div>
+        </div>
+
+        <div className="nav-links">
+          <button 
+            className="nav-link"
+            onClick={() => loadMarkdownContent('about.md', 'About')}
+          >
+            About
+          </button>
+          <button 
+            className="nav-link"
+            onClick={() => loadMarkdownContent('credits.md', 'Credits')}
+          >
+            Credits
+          </button>
         </div>
 
         <div className="airport-toggle-overlay">
@@ -1643,6 +1674,27 @@ function App() {
         <div className="version-info">
           <div className="version-number">v{packageJson.version}</div>
         </div>
+
+        {/* Side panel */}
+        {showSidePanel && (
+          <div className="side-panel-overlay" onClick={() => setShowSidePanel(false)}>
+            <div className="side-panel" onClick={(e) => e.stopPropagation()}>
+              <div className="side-panel-header">
+                <h2>{sidePanelTitle}</h2>
+                <button 
+                  className="close-button"
+                  onClick={() => setShowSidePanel(false)}
+                >
+                  ×
+                </button>
+              </div>
+              
+              <div className="side-panel-content">
+                <ReactMarkdown>{sidePanelContent}</ReactMarkdown>
+              </div>
+            </div>
+          </div>
+        )}
         
         <div className={`flight-input ${isPanelCollapsed ? 'collapsed' : ''}`}>
           <div className="panel-header">

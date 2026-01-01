@@ -45,7 +45,7 @@ function App() {
   const [dataContent, setDataContent] = useState('')
   const [isClosing, setIsClosing] = useState(false)
   const [currentTimezone, setCurrentTimezone] = useState(null)
-
+  const [isBWMode, setIsBWMode] = useState(false)
   
   // Store scene reference to add/remove flight path
   const sceneRef = useRef(null)
@@ -59,6 +59,24 @@ function App() {
   const timezoneDataRef = useRef(null)
   const timezoneFadeIntervalRef = useRef(null)
   const transitionLabelsRef = useRef([])
+  const isBWModeRef = useRef(false)
+  const bwColorsRef = useRef(null)
+  const twilightSphereRef = useRef(null)
+  const earthMaterialRef = useRef(null)
+
+  // Helper to get RGB color from CSS variable
+  const getCSSColor = (varName, element = document.documentElement) => {
+    const rgb = getComputedStyle(element)
+      .getPropertyValue(varName)
+      .trim()
+      .match(/\d+/g)
+    
+    return {
+      r: parseInt(rgb[0]) / 255,
+      g: parseInt(rgb[1]) / 255,
+      b: parseInt(rgb[2]) / 255
+    }
+  }
 
   useEffect(() => {
     if (!canvasRef.current) return
@@ -163,6 +181,8 @@ function App() {
 
     const sphere = new THREE.Mesh(geometry, material)
     scene.add(sphere)
+
+    earthMaterialRef.current = material  // Store reference
 
     // Load plane icon
     const planeTexture = new THREE.TextureLoader().load('/plane-icon.svg', checkAllLoaded)
@@ -360,6 +380,7 @@ function App() {
 
     const twilightSphere = new THREE.Mesh(twilightGeometry, twilightMaterial)
     scene.add(twilightSphere)
+    twilightSphereRef.current = twilightSphere
 
     // Store references for updating
     const sceneRefs = {
@@ -498,6 +519,7 @@ function App() {
           }
           
           if (completedPoints.length > 1) {
+
             // Determine color based on sun angle (twilight-aware)
             const colors = []
             
@@ -536,86 +558,113 @@ function App() {
 
               let r, g, b
 
-              if (sunAngle < 85) {
-                // Full daylight - bright gold
-                r = 1.0
-                g = 0.85
-                b = 0.0
-              } else if (sunAngle < 88) {
-                // Early twilight (85-88°)
-                const t = (sunAngle - 85) / 3
-                if (isSunset) {
-                  // Sunset: gold to warm orange
-                  r = 1.0
-                  g = 0.85 - t * 0.25
-                  b = 0.0
+              // In B&W mode, use simpler gradient
+              if (isBWModeRef.current) {
+                const dayColor = bwColorsRef.current.day
+                const twilightColor = bwColorsRef.current.twilight
+                const nightColor = bwColorsRef.current.night
+                
+                if (sunAngle < 85) {
+                  // Day - white
+                  r = dayColor.r
+                  g = dayColor.g
+                  b = dayColor.b
+                } else if (sunAngle < 95) {
+                  // Twilight - interpolate white to gray
+                  const t = (sunAngle - 85) / 10
+                  r = dayColor.r * (1 - t) + twilightColor.r * t
+                  g = dayColor.g * (1 - t) + twilightColor.g * t
+                  b = dayColor.b * (1 - t) + twilightColor.b * t
                 } else {
-                  // Sunrise: gold to cool amber
-                  r = 1.0
-                  g = 0.85 - t * 0.2
-                  b = 0.0 + t * 0.1
+                  // Night - dark
+                  r = nightColor.r
+                  g = nightColor.g
+                  b = nightColor.b
                 }
-              } else if (sunAngle < 91) {
-                // Mid twilight (88-91°)
-                const t = (sunAngle - 88) / 3
-                if (isSunset) {
-                  // Sunset: warm orange to deep orange
-                  r = 1.0
-                  g = 0.6 - t * 0.15
-                  b = 0.0
-                } else {
-                  // Sunrise: amber to orange
-                  r = 1.0
-                  g = 0.65 - t * 0.15
-                  b = 0.1 + t * 0.15
-                }
-              } else if (sunAngle < 94) {
-                // Deep twilight (91-94°)
-                const t = (sunAngle - 91) / 3
-                if (isSunset) {
-                  // Sunset: deep orange to red
-                  r = 1.0 - t * 0.15
-                  g = 0.45 - t * 0.15
-                  b = 0.0 + t * 0.1
-                } else {
-                  // Sunrise: orange to red-orange
-                  r = 1.0 - t * 0.2
-                  g = 0.5 - t * 0.15
-                  b = 0.25 + t * 0.2
-                }
-              } else if (sunAngle < 97) {
-                // Late twilight (94-97°)
-                const t = (sunAngle - 94) / 3
-                if (isSunset) {
-                  // Sunset: red to dark red (no purple)
-                  r = 0.85 - t * 0.4
-                  g = 0.3 - t * 0.15
-                  b = 0.1 + t * 0.15
-                } else {
-                  // Sunrise: red-orange to purple
-                  r = 0.8 - t * 0.2
-                  g = 0.35 - t * 0.15
-                  b = 0.45 + t * 0.25
-                }
-              } else if (sunAngle < 100) {
-                // Final twilight (97-100°)
-                const t = (sunAngle - 97) / 3
-                if (isSunset) {
-                  // Sunset: dark red to navy (skip purple/indigo)
-                  r = 0.45 - t * 0.35
-                  g = 0.15 - t * 0.0
-                  b = 0.25 + t * 0.25
-                } else {
-                  // Sunrise: purple to indigo
-                  r = 0.6 - t * 0.5
-                  g = 0.2 - t * 0.05
-                  b = 0.7 - t * 0.2
-                }
+
               } else {
-                // Night - navy blue
-                r = 0.1
-                g = 0.15
-                b = 0.5
+
+                if (sunAngle < 85) {
+                  // Full daylight - bright gold
+                  r = 1.0
+                  g = 0.85
+                  b = 0.0
+                } else if (sunAngle < 88) {
+                  // Early twilight (85-88°)
+                  const t = (sunAngle - 85) / 3
+                  if (isSunset) {
+                    // Sunset: gold to warm orange
+                    r = 1.0
+                    g = 0.85 - t * 0.25
+                    b = 0.0
+                  } else {
+                    // Sunrise: gold to cool amber
+                    r = 1.0
+                    g = 0.85 - t * 0.2
+                    b = 0.0 + t * 0.1
+                  }
+                } else if (sunAngle < 91) {
+                  // Mid twilight (88-91°)
+                  const t = (sunAngle - 88) / 3
+                  if (isSunset) {
+                    // Sunset: warm orange to deep orange
+                    r = 1.0
+                    g = 0.6 - t * 0.15
+                    b = 0.0
+                  } else {
+                    // Sunrise: amber to orange
+                    r = 1.0
+                    g = 0.65 - t * 0.15
+                    b = 0.1 + t * 0.15
+                  }
+                } else if (sunAngle < 94) {
+                  // Deep twilight (91-94°)
+                  const t = (sunAngle - 91) / 3
+                  if (isSunset) {
+                    // Sunset: deep orange to red
+                    r = 1.0 - t * 0.15
+                    g = 0.45 - t * 0.15
+                    b = 0.0 + t * 0.1
+                  } else {
+                    // Sunrise: orange to red-orange
+                    r = 1.0 - t * 0.2
+                    g = 0.5 - t * 0.15
+                    b = 0.25 + t * 0.2
+                  }
+                } else if (sunAngle < 97) {
+                  // Late twilight (94-97°)
+                  const t = (sunAngle - 94) / 3
+                  if (isSunset) {
+                    // Sunset: red to dark red (no purple)
+                    r = 0.85 - t * 0.4
+                    g = 0.3 - t * 0.15
+                    b = 0.1 + t * 0.15
+                  } else {
+                    // Sunrise: red-orange to purple
+                    r = 0.8 - t * 0.2
+                    g = 0.35 - t * 0.15
+                    b = 0.45 + t * 0.25
+                  }
+                } else if (sunAngle < 100) {
+                  // Final twilight (97-100°)
+                  const t = (sunAngle - 97) / 3
+                  if (isSunset) {
+                    // Sunset: dark red to navy (skip purple/indigo)
+                    r = 0.45 - t * 0.35
+                    g = 0.15 - t * 0.0
+                    b = 0.25 + t * 0.25
+                  } else {
+                    // Sunrise: purple to indigo
+                    r = 0.6 - t * 0.5
+                    g = 0.2 - t * 0.05
+                    b = 0.7 - t * 0.2
+                  }
+                } else {
+                  // Night - navy blue
+                  r = 0.1
+                  g = 0.15
+                  b = 0.5
+                }
               }
 
               colors.push(r, g, b)
@@ -1597,8 +1646,8 @@ function App() {
         Math.cos(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1)
       ) * 180 / Math.PI
     
-      // Point is in daylight if within ~90 degrees of subsolar point
-      return angularDistance < 90
+      // Point is in daylight if within ~95 degrees of subsolar point
+      return angularDistance < 95
     }
 
     const centerCameraOnFlight = (departure, arrival, flightDistance) => {
@@ -1910,8 +1959,56 @@ function App() {
       return dt.toFormat('MMM d').toUpperCase()
     }
 
+    // Update scene background when B&W mode changes
+    useEffect(() => {
+      if (!sceneRef.current) return
+      
+      if (isBWMode) {
+        sceneRef.current.background = new THREE.Color(0xf5f5f5)
+        
+        // Lighten twilight overlay
+        if (twilightSphereRef.current) {
+          twilightSphereRef.current.material.opacity = 0.1
+        }
+        
+        // Lighten Earth
+        if (earthMaterialRef.current) {
+          earthMaterialRef.current.color.setHex(0xf0f0f0)
+        }
+      } else {
+        sceneRef.current.background = new THREE.Color(0x606569)
+        
+        // Restore twilight overlay
+        if (twilightSphereRef.current) {
+          twilightSphereRef.current.material.opacity = 0.65
+        }
+        
+        // Restore Earth color
+        if (earthMaterialRef.current) {
+          earthMaterialRef.current.color.setHex(0xffffff)
+        }
+      }
+    }, [isBWMode])
+
+    // Sync isBWMode state to ref and update colors
+    useEffect(() => {
+      isBWModeRef.current = isBWMode
+      
+      if (isBWMode) {
+        // Find the element with bw-mode class
+        const appElement = document.querySelector('.bw-mode')
+        if (appElement) {
+          bwColorsRef.current = {
+            day: getCSSColor('--path-day-color', appElement),
+            twilight: getCSSColor('--path-twilight-warm', appElement),
+            night: getCSSColor('--path-night-color', appElement)
+          }
+        }
+      }
+    }, [isBWMode])
+
     return (
-      <div className={`app ${isLoading ? 'loading' : 'loaded'}`}>
+      <div className={`app ${isLoading ? 'loading' : 'loaded'} ${isBWMode ? 'bw-mode' : ''}`}>
         <div className="info-overlay">
           <div className="time">{simulatedTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
           <div className="date">{simulatedTime.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</div>
@@ -1992,6 +2089,17 @@ function App() {
               onChange={(e) => setShowTimezones(e.target.checked)}
             />
             <span>(T) Show Timezones</span>
+          </label>
+        </div>
+
+        <div className="bw-toggle-overlay">
+          <label>
+            <input 
+              type="checkbox"
+              checked={isBWMode}
+              onChange={(e) => setIsBWMode(e.target.checked)}
+            />
+            <span>B&W Mode</span>
           </label>
         </div>
         

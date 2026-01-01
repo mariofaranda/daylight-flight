@@ -343,9 +343,8 @@ canvas {
 .animation-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  gap: 20px;
+  align-items: flex-start;
+  padding: 0;
 }
 
 .animation-route {
@@ -365,40 +364,41 @@ canvas {
   color: rgba(255, 255, 255, 0.7);
 }
 
-.airport-time {
+.airport-time-left,
+.airport-time-right {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  flex: 0 0 auto;
 }
 
 .airport-time-left {
   align-items: flex-start;
-  text-align: center;
-  min-width: 100px;
 }
 
 .airport-time-right {
-  align-items: flex-end;  /* Align right within its space */
-  text-align: center;
-  min-width: 100px;
+  align-items: flex-end;
 }
 
 .airport-code {
-  display: block;
   font-size: 11px;
   color: rgba(255, 255, 255, 0.5);
   text-transform: uppercase;
   font-weight: 500;
-  text-align: center;
+  align-self: center;
+}
+
+.airport-date {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+  align-self: center;
 }
 
 .time-value {
-  display: block;
-  font-size: 26px;
-  font-weight: 600;
-  color: #fff;
   font-family: 'VT323', monospace;
+  font-size: 28px;
+  color: #fff;
+  align-self: inherit;
 }
 
 .slider-container {
@@ -436,6 +436,12 @@ canvas {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
+.slider-icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.9;
+}
+
 .play-button {
   width: 100%;
   padding: 12px;
@@ -461,7 +467,7 @@ canvas {
   justify-content: space-between;
   font-size: 11px;
   color: #999;
-  margin-top: 4px;
+  margin-top: 8px;
 }
 
 .flight-input.collapsed {
@@ -788,3 +794,16 @@ canvas {
   animation: collapseUp 0.2s ease-out forwards;
   overflow: hidden;
 }
+
+.result-row-double {
+  display: flex;
+  gap: 60px;
+  margin-bottom: 6px;
+}
+
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  flex: 1;
+}
+

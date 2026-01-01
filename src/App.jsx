@@ -1709,6 +1709,13 @@ function App() {
       return inside
     }
 
+    const getLocalDateAtAirport = (date, airport) => {
+      if (!airport) return ''
+      const timezone = getAirportTimezone(airport)
+      const dt = DateTime.fromJSDate(date, { zone: timezone })
+      return dt.toFormat('MMM d').toUpperCase()
+    }
+
     return (
       <div className={`app ${isLoading ? 'loading' : 'loaded'}`}>
         <div className="info-overlay">
@@ -2006,21 +2013,25 @@ function App() {
             
             {flightResults && (
               <div className="results-panel">
-                <div className="result-row">
-                  <span className="result-label">Distance:</span>
-                  <span className="result-value">{flightResults.distance} km</span>
+                <div className="result-row-double">
+                  <div className="result-item">
+                    <span className="result-label">Distance:</span>
+                    <span className="result-value">{flightResults.distance} km</span>
+                  </div>
+                  <div className="result-item">
+                    <span className="result-label">Daylight:</span>
+                    <span className="result-value">{flightResults.daylightHours}h {flightResults.daylightMins}m</span>
+                  </div>
                 </div>
-                <div className="result-row">
-                  <span className="result-label">Duration:</span>
-                  <span className="result-value">{flightResults.durationHours}h {flightResults.durationMins}m</span>
-                </div>
-                <div className="result-row">
-                  <span className="result-label">Daylight:</span>
-                  <span className="result-value">{flightResults.daylightHours}h {flightResults.daylightMins}m</span>
-                </div>
-                <div className="result-row">
-                  <span className="result-label">Darkness:</span>
-                  <span className="result-value">{flightResults.darknessHours}h {flightResults.darknessMins}m</span>
+                <div className="result-row-double">
+                  <div className="result-item">
+                    <span className="result-label">Duration:</span>
+                    <span className="result-value">{flightResults.durationHours}h {flightResults.durationMins}m</span>
+                  </div>
+                  <div className="result-item">
+                    <span className="result-label">Darkness:</span>
+                    <span className="result-value">{flightResults.darknessHours}h {flightResults.darknessMins}m</span>
+                  </div>
                 </div>
               </div>
             )}
@@ -2039,6 +2050,12 @@ function App() {
                 </span>
                 <span className="time-value">
                   {flightDataRef.current && getLocalTimeAtAirport(
+                    new Date(flightDataRef.current.departureTime.getTime() + animationProgress * flightDataRef.current.flightDurationMs),
+                    flightDataRef.current.departure
+                  )}
+                </span>
+                <span className="airport-date">
+                  {flightDataRef.current && getLocalDateAtAirport(
                     new Date(flightDataRef.current.departureTime.getTime() + animationProgress * flightDataRef.current.flightDurationMs),
                     flightDataRef.current.departure
                   )}
@@ -2066,6 +2083,12 @@ function App() {
                     flightDataRef.current.arrival
                   )}
                 </span>
+                <span className="airport-date">
+                  {flightDataRef.current && getLocalDateAtAirport(
+                    new Date(flightDataRef.current.departureTime.getTime() + animationProgress * flightDataRef.current.flightDurationMs),
+                    flightDataRef.current.arrival
+                  )}
+                </span>
               </div>
             </div>
             
@@ -2083,8 +2106,8 @@ function App() {
                 className="time-slider"
               />
               <div className="time-labels">
-                <span>Departure</span>
-                <span>Arrival</span>
+                <img src="/departure-icon.svg" alt="Departure" className="slider-icon" />
+                <img src="/arrival-icon.svg" alt="Arrival" className="slider-icon" />
               </div>
             </div>
             

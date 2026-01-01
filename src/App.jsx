@@ -2094,11 +2094,14 @@ function App() {
 
         <div className="bw-toggle-overlay">
           <label>
-            <input 
-              type="checkbox"
-              checked={isBWMode}
-              onChange={(e) => setIsBWMode(e.target.checked)}
-            />
+            <div className="toggle-switch">
+              <input 
+                type="checkbox"
+                checked={isBWMode}
+                onChange={(e) => setIsBWMode(e.target.checked)}
+              />
+              <span className="toggle-slider"></span>
+            </div>
             <span>B&W Mode</span>
           </label>
         </div>

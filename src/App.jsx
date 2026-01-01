@@ -1825,11 +1825,6 @@ function App() {
           <div className="date">{simulatedTime.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</div>
         </div>
 
-        <div className="info-overlay">
-          <div className="time">{simulatedTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
-          <div className="date">{simulatedTime.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</div>
-        </div>
-
         <div className="nav-accordion">
           <button 
             className="nav-link"

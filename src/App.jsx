@@ -1053,9 +1053,9 @@ function App() {
         flightGroup.userData.routeCurve = new THREE.CatmullRomCurve3(points)
         flightGroup.userData.segmentData = segmentData
 
-      // Add airport markers (dots)
-      const dotGeometry = new THREE.SphereGeometry(0.01, 16, 16)
-      const dotMaterial = new THREE.MeshBasicMaterial({ color: 0xe0e0e0 })
+        // Add airport markers (dots)
+        const dotGeometry = new THREE.SphereGeometry(0.01, 16, 16)
+        const dotMaterial = new THREE.MeshBasicMaterial({ color: isBWMode ? 0x1a1a1a : 0xe0e0e0 })
       
       const departureDot = new THREE.Mesh(dotGeometry, dotMaterial)
       departureDot.position.copy(latLonToVector3(departure.lat, departure.lon, 2.01))
@@ -2017,12 +2017,12 @@ function App() {
         
         // Disable twilight overlay
         if (twilightSphereRef.current) {
-          twilightSphereRef.current.material.uniforms.overlayIntensity.value = 0.65
+          twilightSphereRef.current.material.uniforms.overlayIntensity.value = 0.55
         }
         
         // Boost ambient light for even illumination
         if (ambientLightRef.current) {
-          ambientLightRef.current.intensity = 2
+          ambientLightRef.current.intensity = 1.8
         }
 
         // Darker glow

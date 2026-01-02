@@ -512,13 +512,7 @@ function App() {
           progressTubeRef.current = null
         }
 
-        // Remove old transition labels
-        transitionLabelsRef.current.forEach(label => {
-          flightLineRef.current.remove(label)
-          label.material.map.dispose()
-          label.material.dispose()
-        })
-        transitionLabelsRef.current = []
+        // Transition labels are pre-created, no need to remove/recreate
         
         if (progress > 0) {
           // Get points for completed portion
@@ -534,222 +528,44 @@ function App() {
           
           if (completedPoints.length > 1) {
 
-            // Determine color based on sun angle (twilight-aware)
+            // Use pre-calculated colors with interpolation
+            const preCalculatedColors = flightLineRef.current.userData.preCalculatedColors
             const colors = []
             
             for (let i = 0; i < completedPoints.length; i++) {
-              const segmentIndex = Math.min(
-                Math.floor((i / completedPoints.length) * progress * segmentData.length),
-                segmentData.length - 1
-              )
-              const segmentInfo = segmentData[segmentIndex]
+              const exactIndex = (i / completedPoints.length) * progress * preCalculatedColors.length
+              const lowerIndex = Math.min(Math.floor(exactIndex), preCalculatedColors.length - 1)
+              const upperIndex = Math.min(lowerIndex + 1, preCalculatedColors.length - 1)
+              const t = exactIndex - lowerIndex  // Fractional part for interpolation
               
-              if (!segmentInfo) {
-                colors.push(1, 1, 1) // White fallback
-                continue
-              }
+              const lowerColor = preCalculatedColors[lowerIndex]
+              const upperColor = preCalculatedColors[upperIndex]
               
-              const sunAngle = segmentInfo.sunAngle
+              // Linearly interpolate between colors
+              const r = lowerColor.r * (1 - t) + upperColor.r * t
+              const g = lowerColor.g * (1 - t) + upperColor.g * t
+              const b = lowerColor.b * (1 - t) + upperColor.b * t
               
-              // Detect sunset vs sunrise by comparing to earlier point in flight
-              let isSunset = false
-              if (i > 10) {  // Need enough history
-                const earlierIndex = Math.max(0, i - 10)
-                const earlierSegmentIndex = Math.min(
-                  Math.floor((earlierIndex / completedPoints.length) * progress * segmentData.length),
-                  segmentData.length - 1
-                )
-                const earlierAngle = segmentData[earlierSegmentIndex].sunAngle
-                
-                // If current angle is higher than 10 points ago, we're in sunset
-                isSunset = sunAngle > earlierAngle
-              }
-              
-              // Color based on sun angle
-              // 0-85°: Full day (gold)
-              // 85-100°: Twilight (different for sunset vs sunrise)
-              // 100+: Night (deep blue)
-
-              let r, g, b
-
-              // In B&W mode, use simpler gradient
-              if (isBWModeRef.current) {
-                const dayColor = bwColorsRef.current.day
-                const twilightColor = bwColorsRef.current.twilight
-                const nightColor = bwColorsRef.current.night
-                
-                if (sunAngle < 85) {
-                  // Day - white
-                  r = dayColor.r
-                  g = dayColor.g
-                  b = dayColor.b
-                } else if (sunAngle < 90) {
-                  // Early twilight - day to twilight
-                  const t = (sunAngle - 85) / 5
-                  r = dayColor.r * (1 - t) + twilightColor.r * t
-                  g = dayColor.g * (1 - t) + twilightColor.g * t
-                  b = dayColor.b * (1 - t) + twilightColor.b * t
-                } else if (sunAngle < 100) {
-                  // Late twilight - twilight to night
-                  const t = (sunAngle - 90) / 10
-                  r = twilightColor.r * (1 - t) + nightColor.r * t
-                  g = twilightColor.g * (1 - t) + nightColor.g * t
-                  b = twilightColor.b * (1 - t) + nightColor.b * t
-                } else {
-                  // Night - dark
-                  r = nightColor.r
-                  g = nightColor.g
-                  b = nightColor.b
-                }
-
-              } else {
-
-                if (sunAngle < 85) {
-                  // Full daylight - bright gold
-                  r = 1.0
-                  g = 0.85
-                  b = 0.0
-                } else if (sunAngle < 88) {
-                  // Early twilight (85-88°)
-                  const t = (sunAngle - 85) / 3
-                  if (isSunset) {
-                    // Sunset: gold to warm orange
-                    r = 1.0
-                    g = 0.85 - t * 0.25
-                    b = 0.0
-                  } else {
-                    // Sunrise: gold to cool amber
-                    r = 1.0
-                    g = 0.85 - t * 0.2
-                    b = 0.0 + t * 0.1
-                  }
-                } else if (sunAngle < 91) {
-                  // Mid twilight (88-91°)
-                  const t = (sunAngle - 88) / 3
-                  if (isSunset) {
-                    // Sunset: warm orange to deep orange
-                    r = 1.0
-                    g = 0.6 - t * 0.15
-                    b = 0.0
-                  } else {
-                    // Sunrise: amber to orange
-                    r = 1.0
-                    g = 0.65 - t * 0.15
-                    b = 0.1 + t * 0.15
-                  }
-                } else if (sunAngle < 94) {
-                  // Deep twilight (91-94°)
-                  const t = (sunAngle - 91) / 3
-                  if (isSunset) {
-                    // Sunset: deep orange to red
-                    r = 1.0 - t * 0.15
-                    g = 0.45 - t * 0.15
-                    b = 0.0 + t * 0.1
-                  } else {
-                    // Sunrise: orange to red-orange
-                    r = 1.0 - t * 0.2
-                    g = 0.5 - t * 0.15
-                    b = 0.25 + t * 0.2
-                  }
-                } else if (sunAngle < 97) {
-                  // Late twilight (94-97°)
-                  const t = (sunAngle - 94) / 3
-                  if (isSunset) {
-                    // Sunset: red to dark red (no purple)
-                    r = 0.85 - t * 0.4
-                    g = 0.3 - t * 0.15
-                    b = 0.1 + t * 0.15
-                  } else {
-                    // Sunrise: red-orange to purple
-                    r = 0.8 - t * 0.2
-                    g = 0.35 - t * 0.15
-                    b = 0.45 + t * 0.25
-                  }
-                } else if (sunAngle < 100) {
-                  // Final twilight (97-100°)
-                  const t = (sunAngle - 97) / 3
-                  if (isSunset) {
-                    // Sunset: dark red to navy (skip purple/indigo)
-                    r = 0.45 - t * 0.35
-                    g = 0.15 - t * 0.0
-                    b = 0.25 + t * 0.25
-                  } else {
-                    // Sunrise: purple to indigo
-                    r = 0.6 - t * 0.5
-                    g = 0.2 - t * 0.05
-                    b = 0.7 - t * 0.2
-                  }
-                } else {
-                  // Night - navy blue
-                  r = 0.1
-                  g = 0.15
-                  b = 0.5
-                }
-              }
-
               colors.push(r, g, b)
-
             }
             
-            // Detect day/night transitions and create time labels
-            const transitions = []
-            let lastWasDaylight = segmentData[0].sunAngle < 95 // Threshold for day/night
-
-            for (let i = 1; i < completedPoints.length; i++) {
-              const segmentIndex = Math.min(
-                Math.floor((i / completedPoints.length) * progress * segmentData.length),
-                segmentData.length - 1
-              )
-              const segmentInfo = segmentData[segmentIndex]
-              const isDaylight = segmentInfo.sunAngle < 95
+            // Update pre-created transition labels visibility and position
+            const curve = flightLineRef.current.userData.routeCurve
+            
+            transitionLabelsRef.current.forEach(label => {
+              const transitionT = label.userData.transitionT
               
-              // Transition detected
-              if (isDaylight !== lastWasDaylight) {
-                const t = (i / completedPoints.length) * progress
-                const elapsedMs = t * flightDataRef.current.flightDurationMs
-                const hours = Math.floor(elapsedMs / 3600000)
-                const minutes = Math.floor((elapsedMs % 3600000) / 60000)
-                
-                transitions.push({
-                  point: completedPoints[i],
-                  time: `${hours}h ${minutes}m`,
-                  type: isDaylight ? 'sunrise' : 'sunset'
-                })
-                
-                lastWasDaylight = isDaylight
+              if (transitionT <= progress) {
+                // Show label and position it
+                label.visible = true
+                const point = curve.getPoint(transitionT)
+                const offset = point.clone().normalize().multiplyScalar(0.06)
+                label.position.copy(point).add(offset)
+              } else {
+                // Hide label (not reached yet)
+                label.visible = false
               }
-            }
-
-            // Create labels for transitions
-            transitions.forEach(trans => {
-              const canvas = document.createElement('canvas')
-              const context = canvas.getContext('2d')
-              canvas.width = 200
-              canvas.height = 100
-              
-              context.fillStyle = isBWModeRef.current ? 'rgba(0, 0, 0, 0.9)' : 'rgba(255, 255, 255, 0.9)'
-              context.font = '40px system-ui'  // Just change this for size
-              context.textAlign = 'center'
-              context.textBaseline = 'middle'
-              context.fillText(trans.time, canvas.width / 2, canvas.height / 2)
-              
-              const texture = new THREE.CanvasTexture(canvas)
-              const material = new THREE.SpriteMaterial({ 
-                map: texture,
-                sizeAttenuation: false,
-                depthTest: true
-              })
-              const sprite = new THREE.Sprite(material)
-              sprite.scale.set(0.1, 0.05, 1)  // Keep this fixed
-              
-              // Offset position away from path
-              const offset = trans.point.clone().normalize().multiplyScalar(0.06)
-              sprite.position.copy(trans.point).add(offset)
-              
-              flightLineRef.current.add(sprite)
-              transitionLabelsRef.current.push(sprite)
-             
-            })
+            })  
 
             // Create single tube with vertex colors
             const thickGeometry = new THREE.TubeGeometry(
@@ -1008,6 +824,134 @@ function App() {
         })
       }
 
+      // Pre-calculate colors for entire path
+        const preCalculatedColors = []
+        const preCalculatedTransitions = []
+        let lastWasDaylight = segmentData[0].sunAngle < 95
+
+        for (let i = 0; i < segmentData.length; i++) {
+          const segmentInfo = segmentData[i]
+          const sunAngle = segmentInfo.sunAngle
+          
+          // Detect sunset vs sunrise
+          let isSunset = false
+          if (i > 0) {
+            const earlierAngle = segmentData[Math.max(0, i - 1)].sunAngle
+            isSunset = sunAngle > earlierAngle
+          }
+          
+          let r, g, b
+
+          // In B&W mode, use simpler gradient
+          if (isBWMode) {
+            const dayColor = bwColorsRef.current?.day || { r: 1, g: 1, b: 1 }
+            const nightColor = bwColorsRef.current?.night || { r: 0, g: 0, b: 0 }
+            
+            if (sunAngle < 85) {
+              // Full day - white
+              r = dayColor.r
+              g = dayColor.g
+              b = dayColor.b
+            } else if (sunAngle < 100) {
+              // Twilight zone (85-100°) - smooth gradient from white to black
+              const t = (sunAngle - 85) / 15  // 0 to 1 over 15 degrees
+              const val = 1.0 - t
+              r = val; g = val; b = val
+            } else {
+              // Full night - black
+              r = nightColor.r
+              g = nightColor.g
+              b = nightColor.b
+            }
+
+          } else {
+            if (sunAngle < 85) {
+              r = 1.0
+              g = 0.85
+              b = 0.0
+            } else if (sunAngle < 88) {
+              const t = (sunAngle - 85) / 3
+              if (isSunset) {
+                r = 1.0
+                g = 0.85 - t * 0.25
+                b = 0.0
+              } else {
+                r = 1.0
+                g = 0.85 - t * 0.2
+                b = 0.0 + t * 0.1
+              }
+            } else if (sunAngle < 91) {
+              const t = (sunAngle - 88) / 3
+              if (isSunset) {
+                r = 1.0
+                g = 0.6 - t * 0.15
+                b = 0.0
+              } else {
+                r = 1.0
+                g = 0.65 - t * 0.15
+                b = 0.1 + t * 0.15
+              }
+            } else if (sunAngle < 94) {
+              const t = (sunAngle - 91) / 3
+              if (isSunset) {
+                r = 1.0 - t * 0.15
+                g = 0.45 - t * 0.15
+                b = 0.0 + t * 0.1
+              } else {
+                r = 1.0 - t * 0.2
+                g = 0.5 - t * 0.15
+                b = 0.25 + t * 0.2
+              }
+            } else if (sunAngle < 97) {
+              const t = (sunAngle - 94) / 3
+              if (isSunset) {
+                r = 0.85 - t * 0.4
+                g = 0.3 - t * 0.15
+                b = 0.1 + t * 0.15
+              } else {
+                r = 0.8 - t * 0.2
+                g = 0.35 - t * 0.15
+                b = 0.45 + t * 0.25
+              }
+            } else if (sunAngle < 100) {
+              const t = (sunAngle - 97) / 3
+              if (isSunset) {
+                r = 0.45 - t * 0.35
+                g = 0.15 - t * 0.0
+                b = 0.25 + t * 0.25
+              } else {
+                r = 0.6 - t * 0.5
+                g = 0.2 - t * 0.05
+                b = 0.7 - t * 0.2
+              }
+            } else {
+              r = 0.1
+              g = 0.15
+              b = 0.5
+            }
+          }
+
+          preCalculatedColors.push({ r, g, b })
+          
+          // Detect transitions
+          const isDaylight = sunAngle < 95
+          if (i > 0 && isDaylight !== lastWasDaylight) {
+            const t = i / segmentData.length
+            const elapsedMs = t * flightDurationMs
+            const hours = Math.floor(elapsedMs / 3600000)
+            const minutes = Math.floor((elapsedMs % 3600000) / 60000)
+            
+            preCalculatedTransitions.push({
+              index: i,
+              t: t,
+              time: `${hours}h ${minutes}m`,
+              type: isDaylight ? 'sunrise' : 'sunset'
+            })
+            
+            lastWasDaylight = isDaylight
+          }
+        }
+
         // Group consecutive segments by day/night
         const segments = []
         let currentSegment = {
@@ -1052,6 +996,42 @@ function App() {
         flightGroup.userData.routePoints = points
         flightGroup.userData.routeCurve = new THREE.CatmullRomCurve3(points)
         flightGroup.userData.segmentData = segmentData
+        flightGroup.userData.preCalculatedColors = preCalculatedColors
+        flightGroup.userData.preCalculatedTransitions = preCalculatedTransitions
+
+        // Pre-create transition labels
+        preCalculatedTransitions.forEach(trans => {
+          const canvas = document.createElement('canvas')
+          const context = canvas.getContext('2d')
+          canvas.width = 200
+          canvas.height = 100
+          
+          context.fillStyle = isBWMode ? 'rgba(0, 0, 0, 0.9)' : 'rgba(255, 255, 255, 0.9)'
+          context.font = '40px system-ui'
+          context.textAlign = 'center'
+          context.textBaseline = 'middle'
+          context.fillText(trans.time, canvas.width / 2, canvas.height / 2)
+          
+          const texture = new THREE.CanvasTexture(canvas)
+          const material = new THREE.SpriteMaterial({ 
+            map: texture,
+            sizeAttenuation: false,
+            depthTest: true
+          })
+          const sprite = new THREE.Sprite(material)
+          sprite.scale.set(0.1, 0.05, 1)
+          sprite.visible = false  // Hidden initially
+          
+          // Store the transition info on the sprite
+          sprite.userData.transitionT = trans.t
+          sprite.userData.transitionIndex = trans.index
+          
+          flightGroup.add(sprite)
+          transitionLabelsRef.current.push(sprite)
+        })
+
+        // Store points for calculating label positions during animation
+        flightGroup.userData.routePoints = points
 
         // Add airport markers (dots)
         const dotGeometry = new THREE.SphereGeometry(0.01, 16, 16)
@@ -1766,7 +1746,7 @@ function App() {
       console.log('Estimated duration:', flightDurationHours.toFixed(2), 'hours')
       
       // Sample points along the route and check daylight
-      const numSamples = 800
+      const numSamples = 2000
       let daylightSegments = 0
       let darknessSegments = 0
 
